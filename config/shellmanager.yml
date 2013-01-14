@@ -1,0 +1,8 @@
+development:
+  root_service: shellmanager.development
+
+test:
+  root_service: shellmanager.test
+
+production:
+  root_service: shellmanager.production
