@@ -24,6 +24,7 @@ module ShellManager
         return
       end
 
+      shutdown
       @started = false
     end
 
@@ -44,6 +45,11 @@ module ShellManager
           DaemonKit.logger.error e.backtrace
         end
       end
+    end
+
+    def shutdown
+      @queue.delete
+      @chan.close
     end
   end
 end
