@@ -4,11 +4,8 @@
 # At minimum you need just the first line (without the block), or a lot
 # of strange things might start happening...
 DaemonKit::Application.running! do |config|
-  # Trap signals with blocks or procs
-  # config.trap( 'INT' ) do
-  #   # do something clever
-  # end
-  # config.trap( 'TERM', Proc.new { puts 'Going down' } )
+  config.trap( 'INT' ) { ShellManager.stop }
+  config.trap( 'TERM' ) { ShellManager.stop }
 end
 
 # IMPORTANT CONFIGURATION NOTE
@@ -28,8 +25,5 @@ DaemonKit::AMQP.run do |connection|
   #   client.reconnect(false, 1)
   # end
 
-  amq = AMQP::Channel.new
-  amq.queue('test').subscribe do |msg|
-    DaemonKit.logger.debug "Received message: #{msg.inspect}"
-  end
+  ShellManager.start
 end
