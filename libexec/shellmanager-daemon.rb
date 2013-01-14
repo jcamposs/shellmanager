@@ -4,8 +4,8 @@
 # At minimum you need just the first line (without the block), or a lot
 # of strange things might start happening...
 DaemonKit::Application.running! do |config|
-  config.trap( 'INT' ) { ShellManager.stop }
-  config.trap( 'TERM' ) { ShellManager.stop }
+  config.trap( 'INT' ) { ShellManager::Controller.instance.stop }
+  config.trap( 'TERM' ) { ShellManager::Controller.instance.stop }
 end
 
 # IMPORTANT CONFIGURATION NOTE
@@ -25,5 +25,5 @@ DaemonKit::AMQP.run do |connection|
   #   client.reconnect(false, 1)
   # end
 
-  ShellManager.start
+  ShellManager::Controller.instance.start
 end
