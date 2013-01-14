@@ -2,6 +2,7 @@
 # already included in your load path, so no need to specify it.
 
 require 'singleton'
+require 'json'
 
 module ShellManager
   class Controller
@@ -13,6 +14,7 @@ module ShellManager
         return
       end
 
+      init
       @started = true
     end
 
@@ -23,6 +25,25 @@ module ShellManager
       end
 
       @started = false
+    end
+
+    private
+    def init
+      @chan = AMQP::Channel.new
+      queue_name = "#{DAEMON_CONF[:root_service]}.start"
+      DaemonKit.logger.debug "Creating queue #{queue_name}"
+      @queue = @chan.queue(queue_name, :durable => true)
+
+      @queue.subscribe do |metadata, payload|
+        DaemonKit.logger.debug "[requests] start shellinabox #{payload}."
+        begin
+          req = JSON.parse(payload)
+          # TODO: Start shellinabox process
+        rescue Exception => e
+          DaemonKit.logger.error e.message
+          DaemonKit.logger.error e.backtrace
+        end
+      end
     end
   end
 end
