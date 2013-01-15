@@ -1,6 +1,7 @@
 # Your starting point for daemon specific classes. This directory is
 # already included in your load path, so no need to specify it.
 
+require 'shellinabox'
 require 'singleton'
 require 'json'
 
@@ -15,6 +16,7 @@ module ShellManager
       end
 
       init
+      @procs = {}
       @started = true
     end
 
@@ -25,6 +27,7 @@ module ShellManager
       end
 
       shutdown
+      @procs.values.each { |handler|  handler.stop }
       @started = false
     end
 
@@ -39,10 +42,12 @@ module ShellManager
         DaemonKit.logger.debug "[requests] start shellinabox #{payload}."
         begin
           req = JSON.parse(payload)
-          # TODO: Start shellinabox process
+          process_start(req)
+          #Todo: Send success notification
         rescue Exception => e
           DaemonKit.logger.error e.message
           DaemonKit.logger.error e.backtrace
+          #Todo: Send error notification
         end
       end
     end
@@ -50,6 +55,20 @@ module ShellManager
     def shutdown
       @queue.delete
       @chan.close
+    end
+
+    def process_start(req)
+      raise "Protocol error" if not req["id"]
+
+      if @procs[req["id"]]
+        handler = @procs.delete(req["id"])
+        handler.stop
+      end
+
+      handler = Shellinabox::Handler.new
+
+      raise "Can't start shellinabox" if not handler.start
+      @procs[req["id"]] = handler
     end
   end
 end
