@@ -67,7 +67,7 @@ module ShellManager
 
       handler = Shellinabox::Handler.new
 
-      raise "Can't start shellinabox" if not handler.start
+      raise "Can't start shellinabox" if not handler.start(req)
       @procs[req["id"]] = handler
     end
   end
