@@ -1,8 +1,23 @@
+# Shellmanager configuration file
+
+# The configuration specifies the following keys:
+# * user     - Shellinabox user name
+# * group    - Shellinabox group name
+# * path     - Shellinabox configuration directory
+
+defaults: &defaults
+  user: guest
+  group: guest
+  path: /
+
 development:
+  <<: *defaults
   root_service: shellmanager.development
 
 test:
+  <<: *defaults
   root_service: shellmanager.test
 
 production:
+  <<: *defaults
   root_service: shellmanager.production
