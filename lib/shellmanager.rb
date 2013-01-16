@@ -48,7 +48,7 @@ module ShellManager
         DaemonKit.logger.debug "[requests] start shellinabox #{payload}."
         begin
           req = JSON.parse(payload)
-          process_start(req)
+          start_process(req)
           #Todo: Send success notification
         rescue Exception => e
           DaemonKit.logger.error e.message
@@ -69,7 +69,7 @@ module ShellManager
         DaemonKit.logger.debug "[requests] stop shellinabox #{payload}."
         begin
           req = JSON.parse(payload)
-          send_stop_msg if process_stop(req)
+          send_stop_msg if stop_process(req)
         rescue Exception => e
           DaemonKit.logger.error e.message
           DaemonKit.logger.error e.backtrace
@@ -82,7 +82,7 @@ module ShellManager
       @chan.close
     end
 
-    def process_start(req)
+    def start_process(req)
       raise "Protocol error" if not req["id"]
 
       if @procs[req["id"]]
@@ -96,7 +96,7 @@ module ShellManager
       @procs[req["id"]] = handler
     end
 
-    def process_stop(req)
+    def stop_process(req)
       raise "Protocol error" if not req["id"]
 
       return false if not @procs[req["id"]]
