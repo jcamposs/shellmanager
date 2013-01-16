@@ -26,7 +26,7 @@ module ShellManager
         return
       end
 
-      shutdown
+      shutdown_amqp
       @procs.values.each { |handler|  handler.stop }
       @started = false
     end
@@ -35,6 +35,11 @@ module ShellManager
     def init_amqp
       init_start_queue
       init_stop_queue
+    end
+
+    def shutdown_amqp
+      shutdown_start_amqp
+      shutdown_stop_amqp
     end
 
     def init_start_queue
@@ -58,6 +63,10 @@ module ShellManager
       end
     end
 
+    def shutdown_start_amqp
+      @chan.close
+    end
+
     def init_stop_queue
       #Stop queue is a publish/subscriber queue
       @stop_chan = AMQP::Channel.new
@@ -77,9 +86,10 @@ module ShellManager
       end
     end
 
-    def shutdown
-      @queue.delete
-      @chan.close
+    def shutdown_stop_amqp
+      @stop_queue.delete
+      @stop_exchange.delete
+      @stop_chan.close
     end
 
     def start_process(req)
