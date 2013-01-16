@@ -15,7 +15,7 @@ module ShellManager
         return
       end
 
-      init
+      init_amqp
       @procs = {}
       @started = true
     end
@@ -32,7 +32,13 @@ module ShellManager
     end
 
     private
-    def init
+    def init_amqp
+      init_start_queue
+      init_stop_queue
+    end
+
+    def init_start_queue
+      #Start queue is a work queue used for distributing tasks among workers
       @chan = AMQP::Channel.new
       queue_name = "#{DAEMON_CONF[:root_service]}.start"
       DaemonKit.logger.debug "Creating queue #{queue_name}"
@@ -48,6 +54,25 @@ module ShellManager
           DaemonKit.logger.error e.message
           DaemonKit.logger.error e.backtrace
           #Todo: Send error notification
+        end
+      end
+    end
+
+    def init_stop_queue
+      #Stop queue is a publish/subscriber queue
+      @stop_chan = AMQP::Channel.new
+      name = "#{DAEMON_CONF[:root_service]}.stop"
+
+      @stop_exchange = @stop_chan.fanout(name)
+      @stop_queue = @stop_chan.queue("", :exclusive => true, :auto_delete => true).bind(@stop_exchange)
+      @stop_queue.subscribe do |metadata, payload|
+        DaemonKit.logger.debug "[requests] stop shellinabox #{payload}."
+        begin
+          req = JSON.parse(payload)
+          send_stop_msg if process_stop(req)
+        rescue Exception => e
+          DaemonKit.logger.error e.message
+          DaemonKit.logger.error e.backtrace
         end
       end
     end
@@ -69,6 +94,20 @@ module ShellManager
 
       raise "Can't start shellinabox" if not handler.start(req)
       @procs[req["id"]] = handler
+    end
+
+    def process_stop(req)
+      raise "Protocol error" if not req["id"]
+
+      return false if not @procs[req["id"]]
+
+      handler = @procs.delete(req["id"])
+      handler.stop
+      return true
+    end
+
+    def send_stop_msg
+      DaemonKit.logger.debug "Send stop message"
     end
   end
 end
