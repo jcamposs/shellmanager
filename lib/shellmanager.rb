@@ -4,6 +4,12 @@
 require 'controller'
 
 module ShellManager
+  def self.render(name, bind)
+    msg_dir = File.join(DaemonKit.root, "app", "messages")
+    template = ERB.new File.new(File.join(msg_dir, name)).read
+    return template.result(bind).split.join(" ")
+  end
+
   def self.start
     ShellManager::Controller.instance.start
   end
