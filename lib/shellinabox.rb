@@ -1,5 +1,10 @@
 module Shellinabox
   class Handler
+    def on_finish &block
+      return unless block
+      @callback = block
+    end
+
     def start req
       DaemonKit.logger.debug "Start shellinabox process"
 
@@ -65,7 +70,11 @@ module Shellinabox
 
       @pid = EM.system "shellinaboxd", "--disable-ssl", "--port=#{port}",
          "--user=#{DAEMON_CONF[:user]}", "--group=#{DAEMON_CONF[:group]}",
-         "--service=#{svc_opt}", "--user-css=#{css_opt}"
+         "--service=#{svc_opt}", "--user-css=#{css_opt}" do | output, status|
+        DaemonKit.logger.debug status
+        @callback.call(@pid) if @callback
+      end
+      DaemonKit.logger.debug "Started shellinabox #{@pid}"
     end
   end
 end

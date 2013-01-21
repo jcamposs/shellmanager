@@ -78,7 +78,7 @@ module ShellManager
         DaemonKit.logger.debug "[requests] stop shellinabox #{payload}."
         begin
           req = JSON.parse(payload)
-          send_stop_msg if stop_process(req)
+          stop_process(req)
         rescue Exception => e
           DaemonKit.logger.error e.message
           DaemonKit.logger.error e.backtrace
@@ -97,27 +97,32 @@ module ShellManager
 
       if @procs[req["id"]]
         handler = @procs.delete(req["id"])
+        handler.on_finish do |pid|
+          DaemonKit.logger.debug "Ignored process #{pid}"
+        end
         handler.stop
       end
 
       handler = Shellinabox::Handler.new
+      handler.on_finish do
+        @procs.delete(req["id"])
+        send_stop_msg(req["id"])
+      end
 
       raise "Can't start shellinabox" if not handler.start(req)
       @procs[req["id"]] = handler
     end
 
     def stop_process(req)
-      raise "Protocol error" if not req["id"]
+      return if not req["id"]
 
-      return false if not @procs[req["id"]]
+      return if not @procs[req["id"]]
 
-      handler = @procs.delete(req["id"])
-      handler.stop
-      return true
+      @procs[req["id"]].stop
     end
 
-    def send_stop_msg
-      DaemonKit.logger.debug "Send stop message"
+    def send_stop_msg(id)
+      DaemonKit.logger.debug "TODO: Send stop message #{id}"
     end
   end
 end
