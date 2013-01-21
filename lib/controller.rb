@@ -33,6 +33,7 @@ module ShellManager
 
     private
     def init_amqp
+      @chan = AMQP::Channel.new
       init_start_queue
       init_stop_queue
     end
@@ -40,14 +41,14 @@ module ShellManager
     def shutdown_amqp
       shutdown_start_amqp
       shutdown_stop_amqp
+      @chan.close
     end
 
     def init_start_queue
       #Start queue is a work queue used for distributing tasks among workers
-      @start_chan = AMQP::Channel.new
       queue_name = "#{DAEMON_CONF[:root_service]}.start"
       DaemonKit.logger.debug "Creating queue #{queue_name}"
-      @start_queue = @start_chan.queue(queue_name, :durable => true)
+      @start_queue = @chan.queue(queue_name, :durable => true)
 
       @start_queue.subscribe do |metadata, payload|
         DaemonKit.logger.debug "[requests] start shellinabox #{payload}."
@@ -64,16 +65,14 @@ module ShellManager
     end
 
     def shutdown_start_amqp
-      @start_chan.close
+      @start_queue.delete
     end
 
     def init_stop_queue
       #Stop queue is a publish/subscriber queue
-      @stop_chan = AMQP::Channel.new
       name = "#{DAEMON_CONF[:root_service]}.stop"
-
-      @stop_exchange = @stop_chan.fanout(name)
-      @stop_queue = @stop_chan.queue("", :exclusive => true, :auto_delete => true).bind(@stop_exchange)
+      @stop_exchange = @chan.fanout(name)
+      @stop_queue = @chan.queue("", :exclusive => true, :auto_delete => true).bind(@stop_exchange)
       @stop_queue.subscribe do |metadata, payload|
         DaemonKit.logger.debug "[requests] stop shellinabox #{payload}."
         begin
@@ -89,7 +88,6 @@ module ShellManager
     def shutdown_stop_amqp
       @stop_queue.delete
       @stop_exchange.delete
-      @stop_chan.close
     end
 
     def start_process(req)
