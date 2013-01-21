@@ -11,6 +11,12 @@ module Shellinabox
 
     def stop
       DaemonKit.logger.debug "Stop shellinabox process #{@pid}"
+      begin
+        Process.kill('TERM', @pid)
+      rescue Exception => e
+        DaemonKit.logger.error e.message
+        DaemonKit.logger.error e.backtrace
+      end
     end
 
     private
