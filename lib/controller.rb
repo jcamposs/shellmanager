@@ -15,9 +15,7 @@ module ShellManager
         return
       end
 
-      init_amqp
-      @procs = {}
-      @started = true
+      init_daemon_phase1
     end
 
     def stop
@@ -26,14 +24,81 @@ module ShellManager
         return
       end
 
+      @procs.values.each do |handler|
+        # Daemon is shutting down so we can not use AMQP to notify dead processes
+        handler.on_finish do |pid|
+          DaemonKit.logger.debug "Ignored process #{pid}"
+        end
+        handler.stop
+      end
+
       shutdown_amqp
-      @procs.values.each { |handler|  handler.stop }
+      store_ids
       @started = false
     end
 
     private
-    def init_amqp
+    def init_daemon_phase1
+      DaemonKit.logger.debug "Initializing daemon phase 1"
+      ids = load_ids
+
+      if not ids
+        init_daemon_phase2
+        return
+      end
+
+      FileUtils.rm(File.join(DaemonKit.root, "log", "ids"))
+
+      # Notify dead processes
+      DaemonKit.logger.debug "Send stop notification for ids: #{ids}"
       @chan = AMQP::Channel.new
+      send_stop_msg ids do
+        init_daemon_phase2
+      end
+    end
+
+    def init_daemon_phase2
+      DaemonKit.logger.debug "Initializing daemon phase 2"
+      init_amqp
+      @procs = {}
+      @started = true
+    end
+
+    def load_ids
+      return if not File.exist?(File.join(DaemonKit.root, "log", "ids"))
+      begin
+        DaemonKit.logger.debug "Daemon shutted down with pending notifications"
+
+        file = File.new(File.join(DaemonKit.root, "log", "ids"), "r")
+        ids = Marshal.load file
+      rescue Exception => e
+        DaemonKit.logger.error "Can't write ids file: #{e.message}"
+        DaemonKit.logger.debug e.backtrace
+      ensure
+        file.close
+      end
+
+      return ids
+    end
+
+    def store_ids
+      return if @procs.keys.length == 0
+      begin
+        DaemonKit.logger.debug "Store shellinabox ids that must be notified next time the daemon starts"
+        DaemonKit.logger.debug "Ids: #{@procs.keys}"
+
+        file = File.new(File.join(DaemonKit.root, "log", "ids"), "w")
+        file.write Marshal.dump(@procs.keys)
+      rescue Exception => e
+        DaemonKit.logger.error "Can't write ids file: #{e.message}"
+        DaemonKit.logger.debug e.backtrace
+      ensure
+        file.close
+      end
+    end
+
+    def init_amqp
+      @chan = AMQP::Channel.new if not @chan
       init_start_queue
       init_stop_queue
     end
@@ -104,7 +169,7 @@ module ShellManager
       handler = Shellinabox::Handler.new
       handler.on_finish do
         @procs.delete(req["id"])
-        send_stop_msg(req["id"])
+        send_stop_msg([req["id"]])
       end
 
       raise "Can't start shellinabox" if not handler.start(req)
@@ -119,10 +184,13 @@ module ShellManager
       @procs[req["id"]].stop
     end
 
-    def send_stop_msg(id)
+    def send_stop_msg(ids)
+      id = ids[0]
       json = ShellManager.render("shellinabox_stopped.js.erb", binding)
       name = "netlab.services.#{DAEMON_ENV}.shellinabox.stopped"
-      @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"})
+      @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"}) do
+        yield if block_given?
+      end
     end
   end
 end
