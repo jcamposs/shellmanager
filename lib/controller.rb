@@ -185,7 +185,7 @@ module ShellManager
     end
 
     def send_stop_msg(ids)
-      id = ids[0]
+      ids = ids
       json = ShellManager.render("shellinabox_stopped.js.erb", binding)
       name = "netlab.services.#{DAEMON_ENV}.shellinabox.stopped"
       @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"}) do
