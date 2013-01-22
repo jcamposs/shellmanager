@@ -1,0 +1,11 @@
+{
+  "shellinabox": <%= id %>,
+  <% if error %>
+    "status": "error",
+    "cause": "<%= cause %>"
+  <% else %>
+    "status": "success",
+    "host_name": "<%= hostname %>",
+    "port_number": <%= port %>
+  <% end %>
+}

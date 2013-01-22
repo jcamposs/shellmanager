@@ -1,5 +1,8 @@
 module Shellinabox
+
   class Handler
+    attr_reader :port
+
     def on_finish &block
       return unless block
       @callback = block
@@ -61,14 +64,14 @@ module Shellinabox
       # fix due to the port can be reassigned to a different process in the
       # time it is realeased and assigned again.
       svc = TCPServer.new 0
-      port = svc.addr[1]
+      @port = svc.addr[1]
 
       # Release the port so that it can be used by shellinabox demon
       # Note: This port can be reassigned to a diferent process if a context
       # switch happens altough it's not very likely getting the same port.
       svc.close
 
-      @pid = EM.system "shellinaboxd", "--disable-ssl", "--port=#{port}",
+      @pid = EM.system "shellinaboxd", "--disable-ssl", "--port=#{@port}",
          "--user=#{DAEMON_CONF[:user]}", "--group=#{DAEMON_CONF[:group]}",
          "--service=#{svc_opt}", "--user-css=#{css_opt}" do | output, status|
         DaemonKit.logger.debug status

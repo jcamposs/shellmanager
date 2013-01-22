@@ -120,11 +120,11 @@ module ShellManager
         begin
           req = JSON.parse(payload)
           start_process(req)
-          #Todo: Send success notification
+          send_start_msg(false, req["id"])
         rescue Exception => e
           DaemonKit.logger.error e.message
           DaemonKit.logger.error e.backtrace
-          #Todo: Send error notification
+          send_start_msg(true, req["id"], e.message)
         end
       end
     end
@@ -188,6 +188,19 @@ module ShellManager
       hostname = Socket.gethostname
       json = ShellManager.render("shellinabox_stopped.js.erb", binding)
       name = "netlab.services.#{DAEMON_ENV}.shellinabox.stopped"
+      @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"}) do
+        yield if block_given?
+      end
+    end
+
+    def send_start_msg(error, id, cause = nil)
+      if not error
+        hostname = Socket.gethostname
+        port = @procs[id].port
+      end
+
+      json = ShellManager.render("shellinabox_started.js.erb", binding)
+      name = "netlab.services.#{DAEMON_ENV}.shellinabox.started"
       @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"}) do
         yield if block_given?
       end
