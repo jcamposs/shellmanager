@@ -51,7 +51,7 @@ module ShellManager
 
       # Notify dead processes
       DaemonKit.logger.debug "Send stop notification for ids: #{ids}"
-      @chan = AMQP::Channel.new
+      create_channel
       send_stop_msg ids do
         init_daemon_phase2
       end
@@ -98,7 +98,7 @@ module ShellManager
     end
 
     def init_amqp
-      @chan = AMQP::Channel.new if not @chan
+      create_channel
       init_start_queue
       init_stop_queue
     end
@@ -203,6 +203,13 @@ module ShellManager
       name = "netlab.services.#{DAEMON_ENV}.shellinabox.started"
       @chan.default_exchange.publish(json, {:routing_key => name, :content_type => "application/json"}) do
         yield if block_given?
+      end
+    end
+
+    def create_channel
+      if not @chan
+        @chan = AMQP::Channel.new
+        @chan.auto_recovery = true
       end
     end
   end
