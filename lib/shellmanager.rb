@@ -2,6 +2,7 @@
 # already included in your load path, so no need to specify it.
 
 require 'controller'
+require 'erb'
 
 module ShellManager
   def self.render(name, bind)
