@@ -51,13 +51,15 @@ module Shellinabox
       bow = "00+Black\ on\ White.css"
       color = "01+Color\ Terminal.css"
       monochrome = "01_Monochrome.css"
+      fontsmall = "02_Font\ Small.css"
 
       enabled_dir = File.join(DAEMON_CONF[:path], "options-enabled")
 
       css_opt = "Normal:+#{File.join(enabled_dir, wob)},"
       css_opt += "Reverse:-#{File.join(enabled_dir, bow)};"
       css_opt += "Color:+#{File.join(enabled_dir, color)},"
-      css_opt += "Monochrome:-#{File.join(enabled_dir, monochrome)}"
+      css_opt += "Monochrome:-#{File.join(enabled_dir, monochrome)};"
+      css_opt += "Font Small:+#{File.join(enabled_dir, fontsmall)}"
 
       # Reserve a free port by using it, afterwads we will release it
       # at the time of launching the shellinabox demon. That's not an infallible
